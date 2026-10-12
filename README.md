@@ -12,8 +12,8 @@ A macOS update can break either.
 
 ## Status
 
-Tested on macOS 27.0 on Apple silicon with one iPad. Other macOS versions and
-Intel Macs are untested.
+Tested on macOS 27.0 on Apple silicon with an iPad Pro 13-inch (M4). Other
+iPads and other macOS versions are untested. Intel Macs are not supported.
 
 ## Build
 
@@ -96,6 +96,11 @@ different from plain Sidecar. Try it, and stop using it if it does not help.
 
 `boost` needs a Sidecar session to be running. It keeps running until the
 session ends or `sidecarctl boost --stop` is run, and the mirroring ends with it.
+
+`--hz` sets the rate the virtual display is created at, 120 unless given. That
+is the rate the Mac draws at. Nothing on the Mac reports what the iPad itself
+can show, so the rate is not checked against it, and what the iPad shows may be
+lower.
 
 ### Exit codes
 
