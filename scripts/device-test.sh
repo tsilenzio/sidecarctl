@@ -75,6 +75,34 @@ case $? in
     ;;
 esac
 
+# A boost runs for as long as its session, so it is started in the background and its
+# first line read from a file
+boost() {
+  what=$1
+  shift
+  "$bin" connect >/dev/null 2>&1
+  sleep 3
+  out=$(mktemp)
+  "$bin" boost "$@" >"$out" 2>&1 &
+  pid=$!
+  sleep 10
+  case $(cat "$out") in
+    "mirroring Sidecar from"*) echo "ok    $what" ;;
+    *)
+      echo "FAIL  $what: $(cat "$out")"
+      failures=$((failures + 1))
+      ;;
+  esac
+  check "$what, a second one is refused" 7 "a boost is already running" boost
+  check "$what, stopped" 0 "stopped boost" boost --stop
+  wait "$pid"
+  rm -f "$out"
+}
+
+boost "boost"
+boost "boost in Retina" --retina
+check "no boost left running" 0 "no boost running" boost --stop
+
 check "disconnect by UUID" 0 "disconnected from" disconnect "$uuid"
 check "disconnect again" 0 "not connected" disconnect
 

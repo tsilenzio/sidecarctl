@@ -143,6 +143,10 @@ func disconnect(_ manager: NSObject, _ device: NSObject) -> NSError? {
     }
 }
 
+// A line at a time even into a pipe or a file, where output is otherwise held back
+// until exit, which for a boost is the end of the session
+setvbuf(stdout, nil, _IOLBF, 0)
+
 guard let command = parse(Array(CommandLine.arguments.dropFirst())) else { fail(.usage, usage) }
 
 switch command {

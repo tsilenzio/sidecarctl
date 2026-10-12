@@ -11,13 +11,20 @@ import SidecarctlLogic
 
 let boostLockPath = NSTemporaryDirectory() + "sidecarctl-boost.lock"
 
-func sidecarDisplay() -> CGDirectDisplayID? {
-    for screen in NSScreen.screens where screen.localizedName.contains("Sidecar") {
-        if let id = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber {
-            return id.uint32Value
-        }
+// The display of the live session, once it is up. SidecarCore is asked for its ID,
+// and a session that reports none is looked for by name, which only works where
+// macOS names the display in English.
+//
+// Either way the answer comes off NSScreen's list, and not only to know the display
+// is up: a process that never reads that list is later given no modes for the
+// virtual display by CoreGraphics, which left --retina with nothing to switch to.
+func sidecarDisplay(_ manager: NSObject) -> CGDirectDisplayID? {
+    let screens = NSScreen.screens.compactMap { screen in
+        (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber).map { ($0.uint32Value, screen) }
     }
-    return nil
+    let reported = connectedDevices(manager).compactMap { sessionValue(manager, $0, "displayID") }
+    return screens.first { reported.contains(Int($0.0)) }?.0
+        ?? screens.first { $0.1.localizedName.contains("Sidecar") }?.0
 }
 
 func waitFor<T>(_ seconds: TimeInterval, _ find: () -> T?) -> T? {
@@ -59,12 +66,12 @@ func stopBoost() {
 
 func boost(hz: Double, retina: Bool) -> Never {
     guard takeBoostLock() != nil else { fail(.alreadyRunning, "a boost is already running") }
-    guard let sidecar = waitFor(10, sidecarDisplay) else { fail(.noDevices, "no Sidecar display appeared") }
+    let sidecarManager = manager()
+    guard let sidecar = waitFor(10, { sidecarDisplay(sidecarManager) }) else { fail(.noDevices, "no Sidecar display appeared") }
     guard let mode = CGDisplayCopyDisplayMode(sidecar) else { fail(.sidecarError, "could not read the Sidecar display's mode") }
     // Retina doubles the pixels each way at the same size in points
     let scale = retina && mode.pixelWidth == mode.width ? 2 : 1
 
-    let sidecarManager = manager()
     let descriptor = CGVirtualDisplayDescriptor()
     descriptor.queue = DispatchQueue.main
     // Named after the iPad, which is what Displays settings shows under the Mac's name.
@@ -127,7 +134,8 @@ func boost(hz: Double, retina: Bool) -> Never {
     }
     // Then the mirror's source moves to Retina, and Sidecar's display, as its copy,
     // follows
-    var pixels = target?.pixelWidth ?? 0
+    // Read back now, since the modes are often not listed until the mirror is up
+    var pixels = waitFor(3) { CGDisplayCopyDisplayMode(id)?.pixelWidth } ?? mode.pixelWidth
     if scale > 1 {
         RunLoop.current.run(until: Date().addingTimeInterval(1))
         guard let sharp = waitFor(3, { sized().filter { $0.pixelWidth == retinaWidth }.max { $0.refreshRate < $1.refreshRate } }) else {
