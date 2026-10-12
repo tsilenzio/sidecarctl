@@ -48,8 +48,8 @@ With [Homebrew](https://brew.sh):
 brew install tsilenzio/tap/sidecarctl
 ```
 
-Or download the zip from the
-[releases page](https://github.com/tsilenzio/sidecarctl/releases), unzip it, and
+Or download the tarball from the
+[releases page](https://github.com/tsilenzio/sidecarctl/releases), unpack it, and
 move `sidecarctl` somewhere on your `PATH`. The binary is signed and notarized.
 
 To build it yourself, see [Building](#building).
@@ -136,31 +136,55 @@ sidecarctl boost
 
 ## Reference
 
+`sidecarctl help` prints the list below. `sidecarctl help <command>`, or `--help`
+on any command, prints that command's usage and options. Run with no arguments,
+`sidecarctl` prints the same overview.
+
+```
+devices       list the iPads this Mac can reach
+connect       start a Sidecar session, through a virtual display with --boost
+disconnect    end a Sidecar session
+status        show the live session and whether a boost is running
+boost         route a session that is already up through a virtual display
+help          show the overview, or `help <command>` for one command
+--version     print sidecarctl's own version
+```
+
+A mistake in the arguments is named, followed by the help for the command it was
+made in:
+
+```
+$ sidecarctl connect --connection either
+sidecarctl: `--connection` does not take `either`. It wants one of prefer-wired, wired, wireless, system.
+```
+
+### devices
+
 ```
 sidecarctl devices [--verbose | --json]
-sidecarctl status [--json]
-sidecarctl connect [<device>] [--connection <prefer-wired | wired | wireless | system>]
-                   [--framerate <fps>] [--low-latency] [--ignore-not-ready]
-                   [--retries <count>] [--boost [--hz <rate>] [--retina]]
-sidecarctl disconnect [<device>]
-sidecarctl boost [--hz <rate>] [--retina]
-sidecarctl boost --stop
-sidecarctl help [<command>]
-sidecarctl --version
 ```
 
-`sidecarctl help` describes each command, and `sidecarctl help connect`, or
-`--help` on any command, explains that one and its options.
+Prints each reachable iPad on its own line as its UUID, a tab, and its name.
 
-### Devices
-
-`devices` prints each reachable iPad on its own line as its UUID, a tab, and its
-name. `--verbose` adds a tab and the status value Sidecar reports for it.
+| Option | Effect |
+|---|---|
+| `--verbose` | Adds a tab and the status value Sidecar reports for the iPad |
+| `--json` | Prints one line of JSON |
 
 `connect` and `disconnect` take a device as either its name or its UUID, without
 regard to case. With one iPad reachable the device can be left out.
 
-### Connecting
+### connect
+
+```
+sidecarctl connect [<device>] [--connection <how>] [--boost [--hz <rate>] [--retina]]
+                   [--retries <count>] [--framerate <fps>] [--low-latency]
+                   [--ignore-not-ready]
+```
+
+Starts a Sidecar session. A session that already matches what was asked for is
+kept, and `connect` exits 0. A session over a different connection or at a
+different framerate is ended and replaced.
 
 `--connection` selects how the session is carried:
 
@@ -171,17 +195,41 @@ regard to case. With one iPad reachable the device can be left out.
 | `wireless` | Over Wi-Fi. |
 | `system` | Whichever Sidecar picks. |
 
-A session that already matches what was asked for is kept, and `connect` exits 0.
-A session over a different connection or at a different framerate is ended and
-replaced. `disconnect` also exits 0 when there is no session to end.
+| Option | Effect |
+|---|---|
+| `--boost` | Once connected, routes the session through a virtual display. See [boost](#boost). |
+| `--hz <rate>` | With `--boost`, the rate the virtual display is set to, 120 unless given |
+| `--retina` | With `--boost`, twice the pixels each way |
+| `--retries <count>` | That many further tries, 3 seconds apart. 0 unless given. See [Troubleshooting](#troubleshooting) for why. |
+| `--ignore-not-ready` | Tries even when the iPad reports it is not ready |
+| `--framerate <fps>` | The rate Sidecar streams at, 60 unless given. Sidecar's own setting, separate from `--boost`. |
+| `--low-latency` | Turns on Sidecar's low latency mode |
 
-`--framerate` sets the rate Sidecar streams at, 60 when left out. `--low-latency`
-turns on Sidecar's low latency mode.
+### disconnect
 
-`--retries <count>` allows that many further tries, 3 seconds apart. It is 0
-unless given. See [Troubleshooting](#troubleshooting) for why.
+```
+sidecarctl disconnect [<device>]
+```
 
-### Boost
+Ends the session to an iPad. Exits 0 when there is no session to end. A boost
+running on the session stops with it.
+
+### status
+
+```
+sidecarctl status [--json]
+```
+
+Prints each live session with its iPad, whether it is wired or wireless, and its
+framerate, then whether a boost is running. It answers with or without a
+reachable iPad.
+
+### boost
+
+```
+sidecarctl boost [--hz <rate>] [--retina]
+sidecarctl boost --stop
+```
 
 `boost` creates a virtual display and has Sidecar's display mirror it. The
 virtual display is set to a higher refresh rate than Sidecar's own, so the Mac
@@ -189,10 +237,10 @@ draws at that rate and Sidecar streams what it drew. `--retina` also moves the
 display to its Retina mode at the same size.
 
 On my iPad Pro 13-inch (M4) this made Sidecar noticeably more responsive. It is
-not a promise of any particular refresh rate on the iPad. What
-reaches the screen depends on the iPad, the Mac, the connection, and the macOS
-version, none of which sidecarctl can measure, and the result may be no
-different from plain Sidecar. Try it, and stop using it if it does not help.
+not a promise of any particular refresh rate on the iPad. What reaches the
+screen depends on the iPad, the Mac, the connection, and the macOS version, none
+of which sidecarctl can measure, and the result may be no different from plain
+Sidecar. Try it, and stop using it if it does not help.
 
 `boost` needs a Sidecar session to be running. It keeps running until the
 session ends or `sidecarctl boost --stop` is run, and the mirroring ends with it.
@@ -215,8 +263,6 @@ be arranged in System Settings like any other, and macOS remembers where it was
 put.
 
 ### Calling it from another program
-
-`status` reports what is running, with or without a reachable iPad.
 
 `devices --json` and `status --json` print one line of JSON, so a caller reads
 fields and does not parse messages:
@@ -301,8 +347,9 @@ The binary is `.build/release/sidecarctl`.
 
 ### Tests
 
-The unit tests cover argument parsing, device matching, the JSON output, and
-which connections are tried in what order. With Xcode selected (`xcode-select -p`
+The unit tests cover argument parsing, the help and the messages for mistaken
+arguments, device matching, the JSON output, and which connections are tried in
+what order. With Xcode selected (`xcode-select -p`
 names Xcode.app):
 
 ```sh
@@ -321,9 +368,10 @@ reachable iPad, unlocked and awake, and it starts and ends Sidecar sessions.
 
 ### Releases
 
-`scripts/release.sh` builds, signs, and notarizes a zip in `dist/`. It needs a
-Developer ID Application certificate and stored notarization credentials, and
-its header says how to supply both.
+`scripts/release.sh` builds, signs, and notarizes the tagged commit, and leaves a
+tarball and its checksum in `dist/`. It needs a Developer ID Application
+certificate and stored notarization credentials, and its header says how to
+supply both.
 
 ## License
 

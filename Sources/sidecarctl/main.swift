@@ -21,6 +21,9 @@
 //                                               its Retina mode with --retina, until it
 //                                               goes away or this ends
 //   sidecarctl boost --stop                     end a running boost
+//   sidecarctl help [<command>]                 what the tool does, or what one command
+//                                               does and the options it takes
+//   sidecarctl --version                        the version
 //
 // A device is given by its name or by its UUID from `sidecarctl devices`, either
 // without regard to case. Without one the one reachable device is used.
