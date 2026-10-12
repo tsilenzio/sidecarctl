@@ -64,12 +64,16 @@ turns on Sidecar's low latency mode.
 
 ### When the iPad is not ready
 
-A locked or sleeping iPad is listed by `devices` and refuses the connection, and
-macOS shows a dialog of its own for each refused attempt. To avoid that dialog,
-`connect` first reads the status value Sidecar reports for the iPad. When it is
-one recorded as not ready, `connect` exits 9 without asking Sidecar. Unlock the
-iPad and run `connect` again, or pass `--ignore-not-ready` to attempt the
-connection anyway.
+An iPad can be listed by `devices` and still refuse the connection, as one that
+has sat unused for a while may, and macOS shows a dialog of its own for each
+refused attempt. To avoid that dialog, `connect` first reads the status value
+Sidecar reports for the iPad. When it is one recorded as not ready, `connect`
+exits 9 without asking Sidecar. Wake and unlock the iPad and run `connect` again,
+or pass `--ignore-not-ready` to attempt the connection anyway.
+
+The check does not catch every refusal. What puts an iPad into the recorded state
+is not known, and a connection can still fail, with its dialog, from a state that
+reports as ready.
 
 Only status values seen on a real device are recorded, and any other value is
 attempted as usual, so an iPad that reports differently is never refused. The

@@ -45,5 +45,6 @@ public struct LiveSession {
 // SidecarDevice status values seen on a device that then refused every connect.
 // Whole values rather than bits, since what each bit means is not known, so a device
 // that reports anything else is asked as usual. 0x880002 was an iPad16,6 on macOS
-// 27.0, thought to be locked or asleep, which refused with SidecarErrorDeviceNotFound.
+// 27.0 that had sat unused for a while, which refused with SidecarErrorDeviceNotFound.
+// What puts a device in that state is not known. Locking it alone did not.
 public let notReadyStatuses: Set<UInt64> = [0x880002]

@@ -178,8 +178,8 @@ case .connect(let options):
         // Checked before anything is torn down or tried, since a wired connect with no
         // cable fails inside Sidecar, which puts up its own dialog about it
         if !options.ignoreNotReady, let reported = status(of: target), notReadyStatuses.contains(reported) {
-            fail(.notReady, "\(name(of: target)) reports it is not ready, which usually means it is locked or "
-                + "asleep. Unlock it and try again, or pass --ignore-not-ready to try anyway.")
+            fail(.notReady, "\(name(of: target)) reports it is not ready. Wake and unlock it and try again, or pass "
+                + "--ignore-not-ready to try anyway.")
         }
         if options.connection == .wired && !cabled { fail(.noTransport, "no iPad attached by USB") }
         if current != nil {
