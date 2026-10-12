@@ -3,7 +3,7 @@ import Testing
 
 @Suite struct ArgumentsTests {
     @Test func nothingOrAnUnknownCommandIsNoCommand() {
-        #expect(parse([]) == nil)
+        #expect(parse([]) == .help(topic: nil))
         #expect(parse(["launch"]) == nil)
     }
 
@@ -22,11 +22,44 @@ import Testing
         #expect(parse(["status", "--connection", "wired"]) == nil)
     }
 
-    @Test func help() {
-        #expect(parse(["help"]) == .help)
-        #expect(parse(["--help"]) == .help)
-        #expect(parse(["-h"]) == .help)
-        #expect(parse(["connect", "--help"]) == .help)
+    @Test func helpForTheTool() {
+        #expect(parse(["help"]) == .help(topic: nil))
+        #expect(parse(["--help"]) == .help(topic: nil))
+        #expect(parse(["-h"]) == .help(topic: nil))
+    }
+
+    @Test(arguments: commands)
+    func helpForOneCommand(command: String) {
+        #expect(parse(["help", command]) == .help(topic: command))
+        #expect(parse([command, "--help"]) == .help(topic: command))
+        #expect(parse([command, "-h"]) == .help(topic: command))
+        #expect(help(for: command).hasPrefix("usage: sidecarctl \(command)"))
+        #expect(help(for: command) != help(for: nil))
+    }
+
+    @Test func helpForSomethingElseIsNoCommand() {
+        #expect(parse(["help", "launch"]) == nil)
+        #expect(parse(["help", "connect", "boost"]) == nil)
+    }
+
+    @Test func helpAmongOtherOptionsStillHelps() {
+        #expect(parse(["connect", "--boost", "--help"]) == .help(topic: "connect"))
+    }
+
+    @Test func theOverviewNamesEveryCommand() {
+        for command in commands { #expect(help(for: nil).contains("  \(command) ")) }
+    }
+
+    @Test func noHelpLineRunsPastATerminal() {
+        for topic in commands.map(Optional.some) + [nil] {
+            for line in help(for: topic).split(separator: "\n") { #expect(line.count <= 100, "\(line)") }
+        }
+    }
+
+    @Test func version() {
+        #expect(parse(["--version"]) == .version)
+        #expect(parse(["--version", "connect"]) == nil)
+        #expect(SidecarctlLogic.version.split(separator: ".").count == 3)
     }
 
     @Test func anUnknownOptionIsNoCommandAndNeverADevice() {

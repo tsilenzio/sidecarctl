@@ -1,15 +1,3 @@
-public let usage = """
-    usage: sidecarctl devices [--verbose | --json]
-           sidecarctl status [--json]
-           sidecarctl connect [<device>] [--connection <prefer-wired | wired | wireless | system>]
-                              [--framerate <fps>] [--low-latency] [--ignore-not-ready]
-                              [--retries <count>] [--boost [--hz <rate>] [--retina]]
-           sidecarctl disconnect [<device>]
-           sidecarctl boost [--hz <rate>] [--retina]
-           sidecarctl boost --stop
-           sidecarctl help
-    """
-
 public struct Boost: Equatable {
     public var hz = 120.0
     public var retina = false
@@ -44,7 +32,9 @@ public struct ConnectOptions: Equatable {
 }
 
 public enum Command: Equatable {
-    case help
+    // With the command to explain, or nil for the tool as a whole
+    case help(topic: String?)
+    case version
     case devices(verbose: Bool, json: Bool)
     case status(json: Bool)
     case connect(ConnectOptions)
@@ -54,9 +44,18 @@ public enum Command: Equatable {
 }
 
 // The command the arguments ask for, without the program's own name, or nil when
-// they do not make one
+// they do not make one, which complaint(about:) then puts into words. No arguments
+// at all ask for the overview.
 public func parse(_ args: [String]) -> Command? {
-    if args.contains("--help") || args.contains("-h") || args == ["help"] { return .help }
+    if args.isEmpty { return .help(topic: nil) }
+    if args.contains("--help") || args.contains("-h") {
+        return .help(topic: args.first.flatMap { commands.contains($0) ? $0 : nil })
+    }
+    if args.first == "help" {
+        if args.count == 1 { return .help(topic: nil) }
+        return args.count == 2 && commands.contains(args[1]) ? .help(topic: args[1]) : nil
+    }
+    if args == ["--version"] { return .version }
     var rest = args.dropFirst()
     if args.first == "boost" {
         if rest.elementsEqual(["--stop"]) { return .stopBoost }

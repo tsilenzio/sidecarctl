@@ -156,7 +156,11 @@ func disconnect(_ manager: NSObject, _ device: NSObject) -> NSError? {
 // until exit, which for a boost is the end of the session
 setvbuf(stdout, nil, _IOLBF, 0)
 
-guard let command = parse(Array(CommandLine.arguments.dropFirst())) else { fail(.usage, usage) }
+let arguments = Array(CommandLine.arguments.dropFirst())
+guard let command = parse(arguments) else {
+    let (message, topic) = complaint(about: arguments)
+    fail(.usage, "sidecarctl: \(message)\n\n\(help(for: topic))")
+}
 
 switch command {
 case .stopBoost:
@@ -165,8 +169,11 @@ case .stopBoost:
 case .boost(let hz, let retina):
     boost(hz: hz, retina: retina)
 
-case .help:
-    print(usage)
+case .help(let topic):
+    print(help(for: topic))
+
+case .version:
+    print(version)
 
 case .devices(let verbose, let asJSON):
     let m = manager()

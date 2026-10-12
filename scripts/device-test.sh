@@ -46,7 +46,7 @@ echo "status ${rest#*"$tab"}"
 "$bin" disconnect >/dev/null 2>&1
 sleep 3
 
-check "an unknown option is bad arguments" 1 "usage:" connect --wired
+check "an unknown option is bad arguments" 1 "sidecarctl: \`connect\` has no option" connect --wired
 check "status with no session" 0 "not connected" status
 check "an unknown UUID is no such device" 3 "no Sidecar device matches" connect 00000000-0000-0000-0000-000000000000
 check "disconnect with no session" 0 "not connected" disconnect

@@ -145,8 +145,12 @@ sidecarctl connect [<device>] [--connection <prefer-wired | wired | wireless | s
 sidecarctl disconnect [<device>]
 sidecarctl boost [--hz <rate>] [--retina]
 sidecarctl boost --stop
-sidecarctl help
+sidecarctl help [<command>]
+sidecarctl --version
 ```
+
+`sidecarctl help` describes each command, and `sidecarctl help connect`, or
+`--help` on any command, explains that one and its options.
 
 ### Devices
 
