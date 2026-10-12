@@ -64,7 +64,8 @@ func stopBoost() {
     print("stopped boost")
 }
 
-func boost(hz: Double, retina: Bool) -> Never {
+// ending runs when the boost is stopped, and not when it ends because its session did
+func boost(hz: Double, retina: Bool, ending: (() -> Void)? = nil) -> Never {
     guard takeBoostLock() != nil else { fail(.alreadyRunning, "a boost is already running") }
     let sidecarManager = manager()
     guard let sidecar = waitFor(10, { sidecarDisplay(sidecarManager) }) else { fail(.noDevices, "no Sidecar display appeared") }
@@ -159,7 +160,10 @@ func boost(hz: Double, retina: Bool) -> Never {
     signal(SIGINT, SIG_IGN)
     let signals = [SIGTERM, SIGINT].map { sig -> DispatchSourceSignal in
         let source = DispatchSource.makeSignalSource(signal: sig, queue: .main)
-        source.setEventHandler { exit(0) }
+        source.setEventHandler {
+            ending?()
+            exit(0)
+        }
         source.resume()
         return source
     }

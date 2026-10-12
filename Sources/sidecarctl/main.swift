@@ -7,8 +7,11 @@
 //                                               its UUID, a tab, and its name, and with
 //                                               --verbose a tab and its status value
 //   sidecarctl connect [<device>] [--connection <how>] [--framerate <fps>] [--low-latency]
-//                      [--ignore-not-ready]     start a session, streaming at <fps>, in low
-//                                               latency mode
+//                      [--ignore-not-ready] [--retries <count>]
+//                      [--boost [--hz <rate>] [--retina]]
+//                                               start a session, streaming at <fps>, in low
+//                                               latency mode, and with --boost run a boost
+//                                               on it and end both together
 //   sidecarctl disconnect [<device>]            end a session
 //   sidecarctl boost [--hz <rate>] [--retina]
 //                                               mirror the Sidecar display from a virtual
@@ -36,6 +39,10 @@
 // A connect that fails makes Sidecar put up a dialog of its own. To spare that, a
 // device whose status is one recorded as not ready is not asked at all, and connect
 // exits 9. --ignore-not-ready asks anyway. A status not on record is always asked.
+//
+// --retries allows that many further rounds, 3 s apart, 0 unless given, since every
+// round that fails is another dialog. A round spent on a device that is not ready
+// only reads its status again, and shows none.
 
 import Foundation
 import SidecarctlLogic
@@ -181,29 +188,53 @@ case .connect(let options):
     } else {
         // Checked before anything is torn down or tried, since a wired connect with no
         // cable fails inside Sidecar, which puts up its own dialog about it
-        if !options.ignoreNotReady, let reported = status(of: target), notReadyStatuses.contains(reported) {
-            fail(.notReady, "\(name(of: target)) reports it is not ready. Wake and unlock it and try again, or pass "
-                + "--ignore-not-ready to try anyway.")
-        }
         if options.connection == .wired && !cabled { fail(.noTransport, "no iPad attached by USB") }
-        if current != nil {
-            if let error = disconnect(m, target) { fail(.sidecarError, "disconnect failed: \(error)") }
-            // Gives the old session a moment to wind down before the new one starts
-            Thread.sleep(forTimeInterval: 1)
-        }
-        var error: NSError?
-        for (index, transport) in attempts.enumerated() {
-            error = connect(m, target, transport: transport, framerate: options.framerate, lowLatency: options.lowLatency)
-            guard let error, index + 1 < attempts.count else { break }
-            if attempts[index + 1] == transport {
-                warn("wired connect to \(name(of: target)) failed, trying once more: \(error)")
-                Thread.sleep(forTimeInterval: 2)
-            } else {
-                warn("wired connect to \(name(of: target)) failed, trying wireless: \(error)")
+        var replaced = false
+        var round = 0
+        while true {
+            // Read afresh each round, since a device that was not ready may be by now
+            let fresh = devices(m).first { identifier(of: $0) == identifier(of: target) } ?? target
+            let waiting = !options.ignoreNotReady && status(of: fresh).map(notReadyStatuses.contains) == true
+            var error: NSError?
+            if !waiting {
+                if current != nil && !replaced {
+                    if let error = disconnect(m, target) { fail(.sidecarError, "disconnect failed: \(error)") }
+                    replaced = true
+                    // Gives the old session a moment to wind down before the new one starts
+                    Thread.sleep(forTimeInterval: 1)
+                }
+                for (index, transport) in attempts.enumerated() {
+                    error = connect(m, fresh, transport: transport, framerate: options.framerate, lowLatency: options.lowLatency)
+                    guard let error, index + 1 < attempts.count else { break }
+                    if attempts[index + 1] == transport {
+                        warn("wired connect to \(name(of: target)) failed, trying once more: \(error)")
+                        Thread.sleep(forTimeInterval: 2)
+                    } else {
+                        warn("wired connect to \(name(of: target)) failed, trying wireless: \(error)")
+                    }
+                }
+                if error == nil { break }
             }
+            if round == options.retries {
+                if waiting {
+                    fail(.notReady, "\(name(of: target)) reports it is not ready. Wake and unlock it and try again, or pass "
+                        + "--ignore-not-ready to try anyway.")
+                }
+                fail(.sidecarError, "connect to \(name(of: target)) failed: \(error!)")
+            }
+            round += 1
+            // A device that is not ready is only looked at again, which costs no dialog
+            warn(waiting ? "\(name(of: target)) reports it is not ready, looking again in 3 s"
+                : "connect to \(name(of: target)) failed, trying again in 3 s: \(error!)")
+            Thread.sleep(forTimeInterval: 3)
         }
-        if let error { fail(.sidecarError, "connect to \(name(of: target)) failed: \(error)") }
         print("connected to \(name(of: target))")
+    }
+    // The boost and the session then end together, whichever goes first
+    if let wanted = options.boost {
+        boost(hz: wanted.hz, retina: wanted.retina) {
+            if let error = disconnect(m, target) { warn("disconnect failed: \(error)") }
+        }
     }
 
 case .disconnect(let wanted):

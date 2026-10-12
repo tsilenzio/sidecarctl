@@ -104,6 +104,23 @@ boost "boost in Retina" --retina
 check "no boost left running" 0 "no boost running" boost --stop
 
 check "disconnect by UUID" 0 "disconnected from" disconnect "$uuid"
+
+# One command for the session and the boost, which then end together
+out=$(mktemp)
+"$bin" connect --boost >"$out" 2>&1 &
+pid=$!
+sleep 16
+case $(cat "$out") in
+  "connected to"*"mirroring Sidecar from"*) echo "ok    connect --boost" ;;
+  *)
+    echo "FAIL  connect --boost: $(cat "$out")"
+    failures=$((failures + 1))
+    ;;
+esac
+check "stopping the boost" 0 "stopped boost" boost --stop
+wait "$pid"
+rm -f "$out"
+check "the session ended with the boost" 0 "not connected" disconnect
 check "disconnect again" 0 "not connected" disconnect
 
 if [ "$failures" -eq 0 ]; then echo "all passed"; else echo "$failures failed"; fi

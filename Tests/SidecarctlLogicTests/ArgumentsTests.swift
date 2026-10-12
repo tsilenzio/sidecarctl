@@ -61,6 +61,40 @@ import Testing
         #expect(parse(["connect", "--verbose"]) == nil)
     }
 
+    @Test func connectAndBoost() {
+        #expect(parse(["connect", "--boost"]) == .connect(ConnectOptions(boost: Boost())))
+        #expect(Boost().hz == 120)
+        #expect(parse(["connect", "Test iPad", "--boost", "--hz", "90", "--retina"])
+            == .connect(ConnectOptions(device: "Test iPad", boost: Boost(hz: 90, retina: true))))
+        #expect(parse(["connect", "--hz", "90", "--boost"]) == .connect(ConnectOptions(boost: Boost(hz: 90))))
+    }
+
+    @Test func aRateOrRetinaNeedsABoost() {
+        #expect(parse(["connect", "--hz", "90"]) == nil)
+        #expect(parse(["connect", "--retina"]) == nil)
+        #expect(parse(["connect", "--boost", "--hz"]) == nil)
+        #expect(parse(["connect", "--boost", "--hz", "0"]) == nil)
+    }
+
+    @Test func retries() {
+        #expect(parse(["connect"]) == .connect(ConnectOptions(retries: 0)))
+        #expect(parse(["connect", "--retries", "10"]) == .connect(ConnectOptions(retries: 10)))
+        #expect(parse(["connect", "--retries", "0"]) == .connect(ConnectOptions(retries: 0)))
+    }
+
+    @Test func aBadRetryCountIsNoCommand() {
+        #expect(parse(["connect", "--retries"]) == nil)
+        #expect(parse(["connect", "--retries", "-1"]) == nil)
+        #expect(parse(["connect", "--retries", "many"]) == nil)
+    }
+
+    @Test func onlyConnectBoostsOrRetries() {
+        #expect(parse(["disconnect", "--boost"]) == nil)
+        #expect(parse(["disconnect", "--retries", "2"]) == nil)
+        #expect(parse(["devices", "--boost"]) == nil)
+        #expect(parse(["devices", "--retries", "2"]) == nil)
+    }
+
     @Test func disconnect() {
         #expect(parse(["disconnect"]) == .disconnect(device: nil))
         #expect(parse(["disconnect", "Test iPad"]) == .disconnect(device: "Test iPad"))
