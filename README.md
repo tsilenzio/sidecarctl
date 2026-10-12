@@ -108,6 +108,25 @@ session ends or `sidecarctl boost --stop` is run, and the mirroring ends with it
 | 8 | The connection asked for is unavailable |
 | 9 | The device reports it is not ready |
 
+## Tests
+
+The unit tests cover argument parsing, device matching, and which connections are
+tried in what order. With Xcode selected (`xcode-select -p` names Xcode.app):
+
+```sh
+xcrun swift test
+```
+
+With only the command line tools, the test macros' plugin has to be pointed at:
+
+```sh
+xcrun swift test -Xswiftc -plugin-path \
+  -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing
+```
+
+`scripts/device-test.sh` runs the built binary against a real iPad. It needs one
+reachable iPad, unlocked and awake, and it starts and ends Sidecar sessions.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

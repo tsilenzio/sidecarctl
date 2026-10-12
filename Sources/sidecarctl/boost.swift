@@ -7,6 +7,7 @@
 
 import AppKit
 import CGVirtualDisplayPrivate
+import SidecarctlLogic
 
 let boostLockPath = NSTemporaryDirectory() + "sidecarctl-boost.lock"
 
