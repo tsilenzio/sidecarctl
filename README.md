@@ -28,13 +28,15 @@ The binary is `.build/release/sidecarctl`. Copy it anywhere on your `PATH`.
 ## Usage
 
 ```
-sidecarctl devices [--verbose]
+sidecarctl devices [--verbose | --json]
+sidecarctl status [--json]
 sidecarctl connect [<device>] [--connection <prefer-wired | wired | wireless | system>]
                    [--framerate <fps>] [--low-latency] [--ignore-not-ready]
                    [--retries <count>] [--boost [--hz <rate>] [--retina]]
 sidecarctl disconnect [<device>]
 sidecarctl boost [--hz <rate>] [--retina]
 sidecarctl boost --stop
+sidecarctl help
 ```
 
 ### Devices
@@ -116,7 +118,38 @@ is the rate the Mac draws at. Nothing on the Mac reports what the iPad itself
 can show, so the rate is not checked against it, and what the iPad shows may be
 lower.
 
+### Calling it from another program
+
+`status` reports what is running, with or without a reachable iPad:
+
+```
+$ sidecarctl status
+connected to Test iPad, wired, 60 fps
+boost running
+```
+
+`devices --json` and `status --json` print one line of JSON, so a caller reads
+fields and does not parse the messages above:
+
+```
+$ sidecarctl devices --json
+[{"connected":true,"id":"11111111-1111-1111-1111-111111111111","name":"Test iPad","notReady":false,"status":"0x1880306"}]
+$ sidecarctl status --json
+{"boost":4242,"sessions":[{"connection":"wired","displayID":34,"framerate":60,"id":"11111111-1111-1111-1111-111111111111","lowLatency":false,"name":"Test iPad"}]}
+```
+
+`boost` is the process ID of the running boost. `connection` is `wired` or
+`wireless`. A field with no value is left out, so `boost` is absent when none is
+running. A field keeps its name and meaning from one release to the next, and new
+fields may be added.
+
+An option the tool does not know is an error, exit 1, and is never read as a
+device's name.
+
 ### Exit codes
+
+A code keeps its meaning from one release to the next.
+
 
 | Code | Meaning |
 |---|---|

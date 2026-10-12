@@ -46,9 +46,14 @@ echo "status ${rest#*"$tab"}"
 "$bin" disconnect >/dev/null 2>&1
 sleep 3
 
+check "an unknown option is bad arguments" 1 "usage:" connect --wired
+check "status with no session" 0 "not connected" status
 check "an unknown UUID is no such device" 3 "no Sidecar device matches" connect 00000000-0000-0000-0000-000000000000
 check "disconnect with no session" 0 "not connected" disconnect
 check "connect by UUID" 0 "connected to" connect "$uuid"
+check "status with a session" 0 "connected to" status
+check "status as JSON" 0 '{"sessions":[{"connection":' status --json
+check "devices as JSON" 0 '[{"connected":true,' devices --json
 check "connect again keeps the session" 0 "already connected" connect
 check "connect by name finds the same session" 0 "already connected" connect "$name"
 check "system keeps whatever is live" 0 "already connected" connect --connection system

@@ -1,11 +1,13 @@
 public let usage = """
-    usage: sidecarctl devices [--verbose]
+    usage: sidecarctl devices [--verbose | --json]
+           sidecarctl status [--json]
            sidecarctl connect [<device>] [--connection <prefer-wired | wired | wireless | system>]
                               [--framerate <fps>] [--low-latency] [--ignore-not-ready]
                               [--retries <count>] [--boost [--hz <rate>] [--retina]]
            sidecarctl disconnect [<device>]
            sidecarctl boost [--hz <rate>] [--retina]
            sidecarctl boost --stop
+           sidecarctl help
     """
 
 public struct Boost: Equatable {
@@ -42,7 +44,9 @@ public struct ConnectOptions: Equatable {
 }
 
 public enum Command: Equatable {
-    case devices(verbose: Bool)
+    case help
+    case devices(verbose: Bool, json: Bool)
+    case status(json: Bool)
     case connect(ConnectOptions)
     case disconnect(device: String?)
     case boost(hz: Double, retina: Bool)
@@ -52,6 +56,7 @@ public enum Command: Equatable {
 // The command the arguments ask for, without the program's own name, or nil when
 // they do not make one
 public func parse(_ args: [String]) -> Command? {
+    if args.contains("--help") || args.contains("-h") || args == ["help"] { return .help }
     var rest = args.dropFirst()
     if args.first == "boost" {
         if rest.elementsEqual(["--stop"]) { return .stopBoost }
@@ -80,6 +85,7 @@ public func parse(_ args: [String]) -> Command? {
     var hz: Double?
     var retina = false
     var verbose = false
+    var json = false
     var names: [String] = []
     while let arg = rest.popFirst() {
         switch arg {
@@ -105,7 +111,11 @@ public func parse(_ args: [String]) -> Command? {
             retina = true
         case "--verbose":
             verbose = true
+        case "--json":
+            json = true
         default:
+            // An option this does not know is a mistake, and never a device's name
+            if arg.hasPrefix("-") { return nil }
             names.append(arg)
         }
     }
@@ -115,13 +125,15 @@ public func parse(_ args: [String]) -> Command? {
     if names.count > 1 || ((hz != nil || retina) && !boosting) { return nil }
 
     switch args.first {
-    case "devices" where names.isEmpty && !connecting:
-        return .devices(verbose: verbose)
-    case "connect" where !verbose:
+    case "devices" where names.isEmpty && !connecting && !(verbose && json):
+        return .devices(verbose: verbose, json: json)
+    case "status" where names.isEmpty && !connecting && !verbose:
+        return .status(json: json)
+    case "connect" where !verbose && !json:
         return .connect(ConnectOptions(device: names.first, connection: connection ?? .preferWired, framerate: framerate,
                                        lowLatency: lowLatency, ignoreNotReady: ignoreNotReady, retries: retries ?? 0,
                                        boost: boosting ? Boost(hz: hz ?? 120, retina: retina) : nil))
-    case "disconnect" where !verbose && !connecting:
+    case "disconnect" where !verbose && !json && !connecting:
         return .disconnect(device: names.first)
     default:
         return nil

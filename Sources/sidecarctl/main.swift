@@ -3,9 +3,11 @@
 // SidecarLauncher (github.com/Ocasio-J/SidecarLauncher, MIT) showed it can be done.
 // A macOS update can break it.
 //
-//   sidecarctl devices [--verbose]              reachable iPads, one per line, each as
+//   sidecarctl devices [--verbose | --json]     reachable iPads, one per line, each as
 //                                               its UUID, a tab, and its name, and with
 //                                               --verbose a tab and its status value
+//   sidecarctl status [--json]                  the live session and whether a boost is
+//                                               running
 //   sidecarctl connect [<device>] [--connection <how>] [--framerate <fps>] [--low-latency]
 //                      [--ignore-not-ready] [--retries <count>]
 //                      [--boost [--hz <rate>] [--retina]]
@@ -163,11 +165,32 @@ case .stopBoost:
 case .boost(let hz, let retina):
     boost(hz: hz, retina: retina)
 
-case .devices(let verbose):
-    for device in devices(manager()) {
-        let reported = status(of: device).map { "0x" + String($0, radix: 16) } ?? "unknown"
-        print("\(identifier(of: device))\t\(name(of: device))" + (verbose ? "\t\(reported)" : ""))
+case .help:
+    print(usage)
+
+case .devices(let verbose, let asJSON):
+    let m = manager()
+    let live = Set(connectedDevices(m).map { identifier(of: $0) })
+    let reports = devices(m).map {
+        DeviceReport(id: identifier(of: $0), name: name(of: $0), status: status(of: $0), connected: live.contains(identifier(of: $0)))
     }
+    if asJSON {
+        print(json(reports))
+    } else {
+        for report in reports { print("\(report.id)\t\(report.name)" + (verbose ? "\t\(report.status ?? "unknown")" : "")) }
+    }
+
+// Answers with no device reachable too, since the question is only what is running
+case .status(let asJSON):
+    let m = manager()
+    let sessions = connectedDevices(m).map {
+        SessionReport(id: identifier(of: $0), name: name(of: $0),
+                      live: LiveSession(transport: sessionValue(m, $0, "transport"), framerate: sessionValue(m, $0, "framerate"),
+                                        lowLatency: sessionValue(m, $0, "lowLatency")),
+                      displayID: sessionValue(m, $0, "displayID"))
+    }
+    let report = StatusReport(sessions: sessions, boost: runningBoost())
+    if asJSON { print(json(report)) } else { report.lines.forEach { print($0) } }
 
 case .connect(let options):
     let m = manager()

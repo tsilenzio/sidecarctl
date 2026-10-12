@@ -4,12 +4,43 @@ import Testing
 @Suite struct ArgumentsTests {
     @Test func nothingOrAnUnknownCommandIsNoCommand() {
         #expect(parse([]) == nil)
-        #expect(parse(["status"]) == nil)
+        #expect(parse(["launch"]) == nil)
     }
 
     @Test func devices() {
-        #expect(parse(["devices"]) == .devices(verbose: false))
-        #expect(parse(["devices", "--verbose"]) == .devices(verbose: true))
+        #expect(parse(["devices"]) == .devices(verbose: false, json: false))
+        #expect(parse(["devices", "--verbose"]) == .devices(verbose: true, json: false))
+        #expect(parse(["devices", "--json"]) == .devices(verbose: false, json: true))
+        #expect(parse(["devices", "--verbose", "--json"]) == nil)
+    }
+
+    @Test func status() {
+        #expect(parse(["status"]) == .status(json: false))
+        #expect(parse(["status", "--json"]) == .status(json: true))
+        #expect(parse(["status", "Test iPad"]) == nil)
+        #expect(parse(["status", "--verbose"]) == nil)
+        #expect(parse(["status", "--connection", "wired"]) == nil)
+    }
+
+    @Test func help() {
+        #expect(parse(["help"]) == .help)
+        #expect(parse(["--help"]) == .help)
+        #expect(parse(["-h"]) == .help)
+        #expect(parse(["connect", "--help"]) == .help)
+    }
+
+    @Test func anUnknownOptionIsNoCommandAndNeverADevice() {
+        #expect(parse(["connect", "--wired"]) == nil)
+        #expect(parse(["connect", "-w"]) == nil)
+        #expect(parse(["disconnect", "--now"]) == nil)
+        #expect(parse(["devices", "--all"]) == nil)
+        #expect(parse(["status", "--watch"]) == nil)
+    }
+
+    @Test func onlyDevicesAndStatusPrintJSON() {
+        #expect(parse(["connect", "--json"]) == nil)
+        #expect(parse(["disconnect", "--json"]) == nil)
+        #expect(parse(["boost", "--json"]) == nil)
     }
 
     @Test func devicesTakesNoDeviceAndNoConnectFlag() {

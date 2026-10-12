@@ -52,15 +52,20 @@ func takeBoostLock() -> Int32? {
     return fd
 }
 
-func stopBoost() {
+// The process ID of the running boost. A lock that is held but names no process
+// reads as 0.
+func runningBoost() -> Int32? {
     let fd = open(boostLockPath, O_RDONLY)
-    guard fd >= 0 else { return print("no boost running") }
+    guard fd >= 0 else { return nil }
     defer { close(fd) }
-    if flock(fd, LOCK_SH | LOCK_NB) == 0 { return print("no boost running") }
+    if flock(fd, LOCK_SH | LOCK_NB) == 0 { return nil }
     let text = (try? String(contentsOfFile: boostLockPath, encoding: .utf8)) ?? ""
-    guard let pid = Int32(text.trimmingCharacters(in: .whitespacesAndNewlines)), kill(pid, SIGTERM) == 0 else {
-        fail(.sidecarError, "could not stop the running boost")
-    }
+    return Int32(text.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+}
+
+func stopBoost() {
+    guard let pid = runningBoost() else { return print("no boost running") }
+    guard pid > 0, kill(pid, SIGTERM) == 0 else { fail(.sidecarError, "could not stop the running boost") }
     print("stopped boost")
 }
 
